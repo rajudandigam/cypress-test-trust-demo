@@ -165,19 +165,12 @@ export class BookingService {
     bookingId: string,
     providerReference: string,
   ): Promise<void> {
-    if (shouldOmitFinalization(this.scenario)) {
-      // Controlled defect: provider confirmed, but finalization update is omitted.
-      return;
-    }
-    assertTransition("pending", "confirmed");
-    await client.query(
-      `UPDATE bookings
-       SET status = 'confirmed',
-           provider_reference = $2,
-           updated_at = NOW()
-       WHERE id = $1`,
-      [bookingId, providerReference],
-    );
+    // CONTROLLED APPLICATION DEFECT (demo PR): provider confirmed, but the
+    // finalization update is omitted. Receipt/API expose pending truthfully.
+    void client;
+    void bookingId;
+    void providerReference;
+    return;
   }
 }
 
