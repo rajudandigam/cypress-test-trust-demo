@@ -167,6 +167,8 @@ export class BookingService {
   ): Promise<void> {
     // CONTROLLED APPLICATION DEFECT (demo PR): provider confirmed, but the
     // finalization update is omitted. Receipt/API expose pending truthfully.
+    void shouldOmitFinalization;
+    void assertTransition;
     void client;
     void bookingId;
     void providerReference;
