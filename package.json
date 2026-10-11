@@ -15,7 +15,7 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "tsc -p tsconfig.client.json --noEmit && vite build",
     "build:server": "tsc -p tsconfig.server.json",
-    "start": "NODE_ENV=production node --env-file=.env dist/server/index.js",
+    "start": "NODE_ENV=production node dist/server/index.js",
     "test:unit": "vitest run --config vitest.config.ts tests/unit",
     "test:api": "vitest run --config vitest.config.ts tests/api",
     "test:policy": "tsx scripts/test-policy.ts",
