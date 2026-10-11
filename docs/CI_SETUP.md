@@ -19,10 +19,10 @@ Confirm the remote points at **this** project, not `flight-search-demo`.
 After push, open Actions and wait for workflow `required`.  
 Required check name to select in branch protection: **`ci-required`**.
 
-Record:
+Recorded after first green run:
 
-- Run URL: _(fill after first green run)_
-- Commit SHA: _(fill)_
+- Run URL: https://github.com/rajudandigam/cypress-test-trust-demo/actions/runs/38104081711
+- Commit SHA: `24786abff76b030883a00a5a8a345253c566ebc8`
 - Exact check name: `ci-required`
 
 ## 3. Branch ruleset / protection on `main`

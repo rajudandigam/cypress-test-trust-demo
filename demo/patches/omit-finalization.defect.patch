@@ -1,7 +1,7 @@
 diff --git a/src/server/services/booking-service.ts b/src/server/services/booking-service.ts
 --- a/src/server/services/booking-service.ts
 +++ b/src/server/services/booking-service.ts
-@@ -165,19 +165,12 @@
+@@ -165,19 +165,14 @@
      bookingId: string,
      providerReference: string,
    ): Promise<void> {
@@ -20,6 +20,8 @@ diff --git a/src/server/services/booking-service.ts b/src/server/services/bookin
 -    );
 +    // CONTROLLED APPLICATION DEFECT (demo PR): provider confirmed, but the
 +    // finalization update is omitted. Receipt/API expose pending truthfully.
++    void shouldOmitFinalization;
++    void assertTransition;
 +    void client;
 +    void bookingId;
 +    void providerReference;

@@ -1,6 +1,7 @@
 {
   "project": "cypress-test-trust-demo",
-  "updatedAt": "2026-10-10T00:00:00.000Z",
+  "updatedAt": "2026-10-11T02:15:00.000Z",
+  "appCommitMain": "24786abff76b030883a00a5a8a345253c566ebc8",
   "versions": {
     "nodeLocal": "24.12.0",
     "npmLocal": "11.6.2",
@@ -16,27 +17,35 @@
   "evidence": {
     "healthyCriticalLocal": {
       "state": "verified locally",
-      "identities": ["BOOK-001", "BOOK-002"],
-      "notes": "npm run test:critical passed against built app"
+      "identities": ["BOOK-001", "BOOK-002"]
     },
-    "requiredCi": {
-      "state": "implemented but not run",
+    "requiredCiMain": {
+      "state": "verified in CI",
       "checkName": "ci-required",
-      "url": null
+      "commit": "24786abff76b030883a00a5a8a345253c566ebc8",
+      "url": "https://github.com/rajudandigam/cypress-test-trust-demo/actions/runs/38104081711"
+    },
+    "defectivePr": {
+      "state": "verified in CI",
+      "pr": "https://github.com/rajudandigam/cypress-test-trust-demo/pull/1",
+      "defectCommit": "526793bf4f188f98ae959c2863091ad10e245ffe",
+      "defectRun": "https://github.com/rajudandigam/cypress-test-trust-demo/actions/runs/38104090068",
+      "failureClass": "BOOKING_STATUS_MISMATCH",
+      "repairCommit": "5ad784929de9bf0b6b1bdaa4adad8f68b2b8b19e",
+      "repairRun": "https://github.com/rajudandigam/cypress-test-trust-demo/actions/runs/38106041405"
     },
     "nativePrompt": {
       "state": "blocked by external setup",
-      "blocker": "Cypress Cloud projectId + login/record key + AI allowance not configured in this environment",
+      "blocker": "CYPRESS_RECORD_KEY / Cypress Cloud AI access not configured",
       "healingObservation": "unverified"
     },
     "exportProvenance": {
       "state": "not implemented",
-      "variantB": "handwritten-baseline"
+      "variantB": "handwritten-baseline (verified locally on healthy)"
     },
-    "defectivePr": {
-      "state": "implemented but not run",
-      "patch": "demo/patches/omit-finalization.defect.patch",
-      "url": null
+    "branchProtection": {
+      "state": "blocked by external setup",
+      "notes": "Ruleset API rejected; owner must require check ci-required in GitHub UI per docs/CI_SETUP.md"
     }
   }
 }
