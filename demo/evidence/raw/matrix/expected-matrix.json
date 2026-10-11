@@ -1,0 +1,10 @@
+[
+  { "variant": "A", "scenario": "healthy", "expected": "pass" },
+  { "variant": "B", "scenario": "healthy", "expected": "pass" },
+  { "variant": "C", "scenario": "healthy", "expected": "pass" },
+  { "variant": "D", "scenario": "healthy", "expected": "pass" },
+  { "variant": "A", "scenario": "pending-finalization", "expected": "pass" },
+  { "variant": "B", "scenario": "pending-finalization", "expected": "pass" },
+  { "variant": "C", "scenario": "pending-finalization", "expected": "BOOKING_STATUS_MISMATCH" },
+  { "variant": "D", "scenario": "pending-finalization", "expected": "BOOKING_STATUS_MISMATCH" }
+]

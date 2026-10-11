@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["scripts/**/*.ts", "tests/**/*.ts", "vitest.config.ts", "vite.config.ts", "src/domain/**/*.ts"],
+  "exclude": ["scripts/test-critical.ts", "scripts/test-adaptive.ts", "scripts/test-hybrid.ts"]
+}

@@ -1,0 +1,42 @@
+{
+  "project": "cypress-test-trust-demo",
+  "updatedAt": "2026-10-10T00:00:00.000Z",
+  "versions": {
+    "nodeLocal": "24.12.0",
+    "npmLocal": "11.6.2",
+    "cypress": "16.1.1",
+    "postgres": "16.15 (Homebrew locally; postgres:16.15-alpine in CI)",
+    "actions": {
+      "checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "setup-node": "949feb2413d6458794dcd2491c4babbbce0c15c1",
+      "upload-artifact": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "cypress-io/github-action": "c541a95ea92d9239347a2355f2e895cd4b3f8060"
+    }
+  },
+  "evidence": {
+    "healthyCriticalLocal": {
+      "state": "verified locally",
+      "identities": ["BOOK-001", "BOOK-002"],
+      "notes": "npm run test:critical passed against built app"
+    },
+    "requiredCi": {
+      "state": "implemented but not run",
+      "checkName": "ci-required",
+      "url": null
+    },
+    "nativePrompt": {
+      "state": "blocked by external setup",
+      "blocker": "Cypress Cloud projectId + login/record key + AI allowance not configured in this environment",
+      "healingObservation": "unverified"
+    },
+    "exportProvenance": {
+      "state": "not implemented",
+      "variantB": "handwritten-baseline"
+    },
+    "defectivePr": {
+      "state": "implemented but not run",
+      "patch": "demo/patches/omit-finalization.defect.patch",
+      "url": null
+    }
+  }
+}

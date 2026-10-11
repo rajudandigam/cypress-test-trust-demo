@@ -1,0 +1,74 @@
+name: adaptive
+
+# Advisory only. Uses Cypress Cloud secrets only on trusted same-repository contexts.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  adaptive-prompt:
+    name: adaptive-prompt
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    services:
+      postgres:
+        image: postgres:16.15-alpine
+        env:
+          POSTGRES_USER: cypress_demo
+          POSTGRES_PASSWORD: cypress_demo
+          POSTGRES_DB: cypress_test_trust_demo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cypress_demo -d cypress_test_trust_demo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_VERSION: "24"
+      DEMO_MODE: "true"
+      DEMO_SCENARIO: "healthy"
+      DEMO_FIXED_NOW: "2026-10-01T12:00:00.000Z"
+      DATABASE_URL: postgresql://cypress_demo:cypress_demo@127.0.0.1:5432/cypress_test_trust_demo
+      SESSION_SECRET: "ci-session-secret"
+      COOKIE_NAME: "cttd_session"
+      SEED_PASSWORD: "Password123!"
+      ALLOWED_DB_NAME_PATTERN: "cypress_test_trust_demo"
+      PORT: "3000"
+      CYPRESS_baseUrl: http://127.0.0.1:3000
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Require Cloud secret
+        run: |
+          if [ -z "$CYPRESS_RECORD_KEY" ]; then
+            echo "CYPRESS_RECORD_KEY missing — adaptive workflow cannot verify native cy.prompt."
+            exit 2
+          fi
+      - name: Install
+        run: npm ci
+      - name: Migrate, seed, build
+        run: |
+          npm run db:migrate
+          npm run db:seed
+          npm run build
+      - name: Adaptive Cypress (advisory)
+        uses: cypress-io/github-action@c541a95ea92d9239347a2355f2e895cd4b3f8060 # v7.4.6
+        with:
+          install: false
+          start: npm start
+          wait-on: http://127.0.0.1:3000/api/health
+          wait-on-timeout: 120
+          browser: chrome
+          config-file: cypress.adaptive.config.ts
+          record: true

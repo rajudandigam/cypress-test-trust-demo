@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "requiredSpecPaths": [
+    "cypress/e2e/critical/booking-contract.cy.ts"
+  ],
+  "requiredTestIdentities": [
+    "BOOK-001",
+    "BOOK-002"
+  ]
+}

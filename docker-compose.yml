@@ -1,0 +1,21 @@
+# Preferred when Docker is available. Local Homebrew PostgreSQL 16.15 is also supported.
+services:
+  postgres:
+    image: postgres:16.15-alpine
+    container_name: cypress-test-trust-demo-pg
+    environment:
+      POSTGRES_USER: cypress_demo
+      POSTGRES_PASSWORD: cypress_demo
+      POSTGRES_DB: cypress_test_trust_demo
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cypress_demo -d cypress_test_trust_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - cttd_pg_data:/var/lib/postgresql/data
+
+volumes:
+  cttd_pg_data:

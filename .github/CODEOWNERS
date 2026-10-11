@@ -1,0 +1,15 @@
+# Require review for trust-critical surfaces when a second collaborator is available.
+# CODEOWNERS alone does not enforce review — enable required code-owner review in branch rules.
+# Until a second reviewer exists, leave required approval honestly pending.
+
+/cypress/e2e/critical/ @rajudandigam
+/cypress/support/critical.ts @rajudandigam
+/cypress/support/common/ @rajudandigam
+/cypress/contracts/ @rajudandigam
+/scripts/required-manifest.json @rajudandigam
+/scripts/lib/result-verifier.ts @rajudandigam
+/scripts/lib/policy-check.ts @rajudandigam
+/scripts/test-critical.ts @rajudandigam
+/scripts/test-policy.ts @rajudandigam
+/.github/workflows/ @rajudandigam
+/.github/CODEOWNERS @rajudandigam
