@@ -1,65 +1,67 @@
 # 12-minute demonstration runbook
 
-Machine: built mode preferred (`npm run build && npm start`).  
-Pre-run hosted CI for exact commits; live triggers must not control stage timing.
+Prepare before the stage clock: `npm ci`, `db:up`, migrate/seed, `build`, Cloud login if showing native prompt.
+
+Validate scenario after each `demo:up`:
+```bash
+curl -s http://127.0.0.1:3000/api/health | tee /tmp/health.json
+# expect status=ready and scenario=<intended>
+```
+
+Stop a previous owned demo with Ctrl+C in that terminal (do not kill arbitrary port occupants).
 
 ## 0:00–1:00 — Healthy reservation
 
-**Command**
 ```bash
-npm run demo:up -- --scenario healthy
-# browser: http://127.0.0.1:3000
+DEMO_SCENARIO=healthy APP_IDENTITY=demo-stage npm run demo:up -- --scenario healthy
 ```
-**Files:** receipt UI `src/client/pages/Receipt.tsx`  
-**Narration:** “Same journey attendees can clone — search UA123, book, refresh.”  
-**Expect:** Status pill `confirmed`, total `$428.00`, ID survives refresh.  
-**Recovery:** `npm run demo:reset && npm run db:seed`
+Browser: http://127.0.0.1:3000 — sign in as `alex@example.test` / `Password123!`, search SFO→JFK 2026-11-12, select **UA123**, book, refresh receipt.  
+**Expect:** status `confirmed`, `$428.00`.  
+**Recovery:** `DEMO_MODE=true npm run demo:reset && npm run db:seed`
 
 ## 1:00–3:00 — Locator migration + prompt inspection
 
-**Command**
 ```bash
-# stop prior demo:up, then:
-DEMO_SCENARIO=locator-change npm run demo:up -- --scenario locator-change
-npm run cy:open  # adaptive config / Chrome; Cloud login required
+# stop prior server, then:
+DEMO_SCENARIO=locator-change APP_IDENTITY=demo-stage npm run demo:up -- --scenario locator-change
+CYPRESS_PROJECT_ID=<your-id> npm run cy:open:adaptive
+# run cypress/e2e/adaptive/booking-shallow.cy.ts
 ```
-**Files:** `cypress/e2e/adaptive/booking-shallow.cy.ts`, `src/domain/scenario.ts`  
-**Narration:** “Select control moved from `data-cy` to `data-action` — inspect what native prompt actually targeted.”  
-**Expect:** Label healing as **observed / no observed / unverified** from the run only.  
-**Recovery:** If Cloud unavailable, show recording fallback; do not invent a heal.
+**Expect:** Inspect generated selector; label heal as observed / no observed / unverified.  
+**Recovery:** If Cloud unavailable, play fallback recording; do not invent a heal.
 
 ## 3:00–5:00 — Shallow test vs pending-finalization
 
-**Command**
 ```bash
-npm run demo:up -- --scenario pending-finalization
-# run Variant A or B against this scenario
+DEMO_SCENARIO=pending-finalization APP_IDENTITY=demo-stage npm run demo:up -- --scenario pending-finalization
+# Variant A (Cloud):
+CYPRESS_PROJECT_ID=<id> CYPRESS_RECORD_KEY=<secret> npm run test:adaptive
+# or Variant B (static shallow, no Cloud):
+DEMO_SCENARIO=pending-finalization APP_IDENTITY=demo-stage npx cypress run --config-file cypress.comparison.config.ts --spec cypress/e2e/comparison/booking-shallow-exported.cy.ts
 ```
-**Narration:** “Receipt says Reservation created; status honestly shows pending.”  
-**Expect:** Shallow receipt/reference assertions **pass**; DB row status `pending`.  
-**Recovery:** Confirm `/api/health` reports `pending-finalization`.
+**Expect:** Receipt/reference assertions pass; status pill shows `pending`.
 
 ## 5:00–8:00 — Hybrid contract assertions
 
-**Files:** `cypress/e2e/adaptive/booking-hybrid.cy.ts` (short assert block)  
-**Narration:** “Add the explicit confirmed-status check — same UI journey, stronger question.”  
-**Expect:** Failure message includes `BOOKING_STATUS_MISMATCH`.  
-**Recovery:** If failure is a timeout/selector/login issue, say so — that is **not** defect detection.
+```bash
+# same pending-finalization server
+CYPRESS_PROJECT_ID=<id> CYPRESS_RECORD_KEY=<secret> npm run test:hybrid
+# or critical static D:
+DEMO_SCENARIO=pending-finalization APP_IDENTITY=demo-stage npm run test:critical
+```
+**Expect:** Failure includes `BOOKING_STATUS_MISMATCH` on BOOK-001 / C-HYBRID.  
+**Recovery:** If timeout/selector/login, say so — not defect detection.
 
 ## 8:00–9:30 — Export review
 
-**Files:** `demo/generated/` + comparison spec provenance header  
-**Narration:** “Exporting the shallow test does not add the business assertion.”  
-**Expect:** Show raw export vs reviewed diff; Variant B labeled truthfully.  
-**Recovery:** If no real export yet, show handwritten baseline label and Cloud blocker.
+Open `demo/generated/` (raw export + reviewed diff) after a real `cy.prompt` export.  
+Until then, Variant B remains labeled **handwritten-baseline**.
 
-## 9:30–12:00 — Required check blocks the defective PR
+## 9:30–12:00 — Required check blocks defective PR
 
-**Pre-run:** Open PR with `apply-demo-defect.ts defect` commit.  
-**Narration:** “Unchanged critical suite; required check `ci-required` is red; merge blocked.”  
-**Expect:** Real check URL + merge restriction for the demo actor; repair commit green.  
-**Recovery:** If protections not configured, show local `test:critical` failure + CI_SETUP steps honestly.
+Use **pre-run** protected-PR evidence (new PR after ruleset activation), not a live CI wait.  
+Narration: unchanged critical suite; `ci-required` red; merge blocked; repair green.
 
 ## Recording fallback
 
-If native AI/network delays: play pre-captured video from `demo/evidence/raw/` (gitignored large files). Manual capture: QuickTime screen recording of steps 1–5 before stage day.
+If native AI/network delays: play pre-captured clip from `demo/evidence/raw/` (gitignored). Manual capture: QuickTime of steps 1–5 before stage day.

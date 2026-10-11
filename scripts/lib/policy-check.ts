@@ -2,11 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-const CRITICAL_ROOTS = [
-  "cypress/e2e/critical",
+const ALLOWED_PREFIXES = [
+  "cypress/e2e/critical/",
   "cypress/support/critical.ts",
-  "cypress/support/common",
-  "cypress/contracts",
+  "cypress/support/common/",
+  "cypress/contracts/",
+];
+
+const ENTRY_POINTS = [
+  "cypress/e2e/critical/booking-contract.cy.ts",
+  "cypress/support/critical.ts",
 ];
 
 const FORBIDDEN_IMPORT_SNIPPETS = [
@@ -22,20 +27,41 @@ export type PolicyFinding = {
   code: string;
 };
 
-function walk(dir: string): string[] {
-  if (!fs.existsSync(dir)) return [];
-  const stat = fs.statSync(dir);
-  if (stat.isFile()) return [dir];
-  const out: string[] = [];
-  for (const entry of fs.readdirSync(dir)) {
-    out.push(...walk(path.join(dir, entry)));
-  }
-  return out.filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"));
+function isAllowedPath(rel: string): boolean {
+  const n = rel.replace(/\\/g, "/");
+  return ALLOWED_PREFIXES.some((p) => n === p || n.startsWith(p));
 }
 
-function isCommentOrStringOnlyPrompt(sourceFile: ts.SourceFile, node: ts.Node): boolean {
-  const text = node.getText(sourceFile);
-  return text.includes("cy.prompt") && !ts.isCallExpression(node) && !ts.isPropertyAccessExpression(node);
+function resolveImport(
+  fromFile: string,
+  specifier: string,
+  cwd: string,
+): string | "external" | "alias-rejected" | "unresolved" {
+  if (
+    specifier.startsWith("http:") ||
+    specifier.startsWith("https:") ||
+    specifier.startsWith("data:")
+  ) {
+    return "unresolved";
+  }
+  if (specifier.startsWith("@") || (!specifier.startsWith(".") && !specifier.startsWith("/"))) {
+    // No path aliases are permitted in the critical graph
+    if (specifier.startsWith("@")) return "alias-rejected";
+    return "external";
+  }
+  const fromDir = path.dirname(path.join(cwd, fromFile));
+  const candidates = [
+    path.resolve(fromDir, specifier),
+    path.resolve(fromDir, `${specifier}.ts`),
+    path.resolve(fromDir, `${specifier}.tsx`),
+    path.resolve(fromDir, specifier, "index.ts"),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c) && fs.statSync(c).isFile()) {
+      return path.relative(cwd, c).replace(/\\/g, "/");
+    }
+  }
+  return "unresolved";
 }
 
 export function analyzeCriticalFile(filePath: string, content: string): PolicyFinding[] {
@@ -69,40 +95,29 @@ export function analyzeCriticalFile(filePath: string, content: string): PolicyFi
           code: "PROMPT_COMPUTED",
         });
       }
-      if (
-        ts.isIdentifier(expr) &&
-        (expr.text === "eval" || expr.text === "Function")
-      ) {
+      if (ts.isIdentifier(expr) && (expr.text === "eval" || expr.text === "Function")) {
         findings.push({
           file: filePath,
           message: `${expr.text} is unsupported in critical graph`,
           code: "DYNAMIC_EVAL",
         });
       }
-    }
-
-    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-      const module = node.moduleSpecifier;
-      if (module && ts.isStringLiteral(module)) {
-        const spec = module.text;
-        if (spec.includes("adaptive") || FORBIDDEN_IMPORT_SNIPPETS.some((s) => spec.includes(s))) {
-          findings.push({
-            file: filePath,
-            message: `Forbidden import into critical graph: ${spec}`,
-            code: "FORBIDDEN_IMPORT",
-          });
-        }
-        if (spec.startsWith("http:") || spec.includes("data:")) {
-          findings.push({
-            file: filePath,
-            message: `Unsupported dynamic/remote import: ${spec}`,
-            code: "DYNAMIC_IMPORT",
-          });
+      if (ts.isPropertyAccessExpression(expr)) {
+        const name = expr.name.text;
+        if (name === "only" || name === "skip") {
+          const base = expr.expression.getText(sourceFile);
+          if (base === "it" || base === "describe" || base === "context") {
+            findings.push({
+              file: filePath,
+              message: `${base}.${name} is forbidden for required suite`,
+              code: "FOCUSED_OR_SKIPPED",
+            });
+          }
         }
       }
     }
 
-    if (ts.isCallExpression(node) && node.expression.getText(sourceFile) === "import") {
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       findings.push({
         file: filePath,
         message: "Dynamic import() is unsupported in critical graph",
@@ -110,47 +125,115 @@ export function analyzeCriticalFile(filePath: string, content: string): PolicyFi
       });
     }
 
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-      const name = node.expression.name.text;
-      if (name === "only" || name === "skip") {
-        const base = node.expression.expression.getText(sourceFile);
-        if (base === "it" || base === "describe" || base === "context") {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      const module = node.moduleSpecifier;
+      if (module && ts.isStringLiteral(module)) {
+        const spec = module.text;
+        if (FORBIDDEN_IMPORT_SNIPPETS.some((s) => spec.includes(s)) || spec.includes("adaptive")) {
           findings.push({
             file: filePath,
-            message: `${base}.${name} is forbidden for required suite`,
-            code: "FOCUSED_OR_SKIPPED",
+            message: `Forbidden import into critical graph: ${spec}`,
+            code: "FORBIDDEN_IMPORT",
           });
         }
       }
     }
 
-    // Ignore comments that merely discuss cy.prompt — only flag executable nodes above.
-    void isCommentOrStringOnlyPrompt;
+    // Helper that forwards to cy.prompt (executable FunctionDeclaration only)
+    if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) {
+      const body = node.body?.getText(sourceFile) || "";
+      if (/\bcy\s*\.\s*prompt\s*\(/.test(body) || /\bcy\s*\[\s*['"]prompt['"]\s*\]/.test(body)) {
+        findings.push({
+          file: filePath,
+          message: "Helper-wrapped cy.prompt detected in critical graph",
+          code: "PROMPT_HELPER",
+        });
+      }
+    }
 
     ts.forEachChild(node, visit);
   };
 
   visit(sourceFile);
-
-  // Detect helper-wrapped prompt: function that only forwards to cy.prompt
-  if (/function\s+\w+\s*\([^)]*\)\s*\{[^}]*cy\s*\.\s*prompt/m.test(content)) {
-    findings.push({
-      file: filePath,
-      message: "Helper-wrapped cy.prompt detected in critical graph",
-      code: "PROMPT_HELPER",
-    });
-  }
-
   return findings;
 }
 
-export function runPolicyCheck(cwd = process.cwd()): PolicyFinding[] {
-  const files = CRITICAL_ROOTS.flatMap((root) => walk(path.join(cwd, root)));
+export function collectCriticalGraph(cwd = process.cwd()): {
+  files: string[];
+  findings: PolicyFinding[];
+} {
   const findings: PolicyFinding[] = [];
-  for (const file of files) {
-    // common helpers are shared; still forbid prompt there
-    const content = fs.readFileSync(file, "utf8");
-    findings.push(...analyzeCriticalFile(path.relative(cwd, file), content));
+  const visited = new Set<string>();
+  const queue = [...ENTRY_POINTS];
+
+  while (queue.length) {
+    const rel = queue.pop()!.replace(/\\/g, "/");
+    if (visited.has(rel)) continue;
+    visited.add(rel);
+
+    if (!isAllowedPath(rel)) {
+      findings.push({
+        file: rel,
+        message: `Critical import graph escaped allowed boundary: ${rel}`,
+        code: "BOUNDARY_ESCAPE",
+      });
+      continue;
+    }
+
+    const abs = path.join(cwd, rel);
+    if (!fs.existsSync(abs)) {
+      findings.push({
+        file: rel,
+        message: `Missing critical graph file: ${rel}`,
+        code: "MISSING_FILE",
+      });
+      continue;
+    }
+
+    const content = fs.readFileSync(abs, "utf8");
+    findings.push(...analyzeCriticalFile(rel, content));
+
+    const sourceFile = ts.createSourceFile(rel, content, ts.ScriptTarget.Latest, true);
+    const consider = (specifier: string) => {
+      const resolved = resolveImport(rel, specifier, cwd);
+      if (resolved === "external") return;
+      if (resolved === "alias-rejected") {
+        findings.push({
+          file: rel,
+          message: `Unsupported path alias in critical graph: ${specifier}`,
+          code: "ALIAS_REJECTED",
+        });
+        return;
+      }
+      if (resolved === "unresolved") {
+        if (specifier.startsWith(".")) {
+          findings.push({
+            file: rel,
+            message: `Unresolved first-party import: ${specifier}`,
+            code: "UNRESOLVED_IMPORT",
+          });
+        }
+        return;
+      }
+      queue.push(resolved);
+    };
+
+    const walkImports = (node: ts.Node) => {
+      if (
+        (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+        node.moduleSpecifier &&
+        ts.isStringLiteral(node.moduleSpecifier)
+      ) {
+        consider(node.moduleSpecifier.text);
+      }
+      ts.forEachChild(node, walkImports);
+    };
+    walkImports(sourceFile);
   }
-  return findings;
+
+  return { files: [...visited], findings };
+}
+
+export function runPolicyCheck(cwd = process.cwd()): PolicyFinding[] {
+  return collectCriticalGraph(cwd).findings;
 }

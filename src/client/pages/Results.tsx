@@ -67,10 +67,7 @@ export function Results() {
   return (
     <section className="panel">
       <h2>Choose an itinerary</h2>
-      <p className="muted">
-        Results are ordered with a cheaper alternative first. Select UA123 explicitly — not the first
-        card.
-      </p>
+      <p className="muted">Compare departure times and fares, then select the flight that fits your trip.</p>
       {loading && <div className="loading" data-cy="results-loading">Loading flights…</div>}
       {error && (
         <div className="alert" role="alert" data-cy="form-alert">

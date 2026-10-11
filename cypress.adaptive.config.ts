@@ -6,6 +6,13 @@ import { resetDemoData } from "./src/server/db/seed";
 
 loadEnvFile();
 
+const projectId = process.env.CYPRESS_PROJECT_ID;
+if (!projectId) {
+  throw new Error(
+    "CYPRESS_PROJECT_ID is required for adaptive Cypress config (set the GitHub Actions variable or local env). No placeholder projectId is accepted.",
+  );
+}
+
 async function resetDb() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL required for Cypress tasks");
@@ -20,7 +27,7 @@ async function resetDb() {
 }
 
 export default defineConfig({
-  projectId: process.env.CYPRESS_PROJECT_ID || "cttdemo",
+  projectId,
   retries: 0,
   video: false,
   e2e: {

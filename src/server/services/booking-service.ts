@@ -4,7 +4,7 @@ import type { Db } from "../db/pool.js";
 import { withTransaction } from "../db/pool.js";
 import type { Clock } from "../../domain/clock.js";
 import type { BookingView, DemoScenario } from "../../domain/types.js";
-import { buildPrice } from "../../domain/money.js";
+import { storedPriceSnapshot } from "../../domain/money.js";
 import { assertTransition } from "../../domain/booking-state.js";
 import { shouldOmitFinalization } from "../../domain/scenario.js";
 import type { ProviderAdapter } from "../adapters/provider.js";
@@ -16,7 +16,7 @@ function payloadHash(quoteId: string): string {
 }
 
 function mapBooking(row: Record<string, unknown>): BookingView {
-  const price = buildPrice(Number(row.base_cents), Number(row.taxes_fees_cents));
+  const price = storedPriceSnapshot(row);
   return {
     id: String(row.id),
     status: row.status as BookingView["status"],

@@ -3,25 +3,34 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   classifyFailure,
-  matchesExpectedDefect,
+  isIntendedBookingStatusDefect,
+  validateCypressRun,
+  type CypressRunResult,
   type FailureClass,
-} from "./lib/result-verifier.js";
+} from "./lib/cypress-result.js";
 
 type MatrixRow = {
-  variant: "A" | "B" | "C" | "D";
+  variant: "A" | "B" | "C" | "D" | "STYLE" | "LOCATOR";
   scenario: string;
-  expected: "pass" | FailureClass;
-  observed?: "pass" | "fail";
-  failureClass?: FailureClass;
-  rawError?: string;
-  matchedExpectedDefect?: boolean;
+  expected: "pass" | FailureClass | "observation";
+  expectedIds?: string[];
 };
 
-/**
- * Comparison matrix runner.
- * Reads previously captured Cypress structured results under demo/evidence/raw/matrix/
- * and classifies outcomes. Does not turn expected failures into green E2E tests.
- */
+type EvidenceEnvelope = {
+  meta: {
+    appCommit: string;
+    testCommit?: string;
+    dirtyHash?: string;
+    scenario: string;
+    variant: string;
+    browser?: string;
+    cypressVersion?: string;
+    timestamp: string;
+    runId?: string;
+  };
+  result: CypressRunResult;
+};
+
 function main() {
   const dir = path.resolve("demo/evidence/raw/matrix");
   if (!fs.existsSync(dir)) {
@@ -29,8 +38,7 @@ function main() {
       JSON.stringify({
         ok: false,
         code: "NO_MATRIX_EVIDENCE",
-        message:
-          "No matrix evidence yet. Capture per-variant Cypress results into demo/evidence/raw/matrix/ first.",
+        message: "No matrix evidence yet. Run npm run demo:capture first.",
       }),
     );
     process.exit(2);
@@ -51,29 +59,87 @@ function main() {
         matchedExpectedDefect: false,
       };
     }
-    const raw = JSON.parse(fs.readFileSync(resultFile, "utf8")) as {
-      status?: string;
-      runs?: Array<{ tests?: Array<{ state?: string; displayError?: string | null }> }>;
-    };
-    const failedTest = (raw.runs || [])
-      .flatMap((r) => r.tests || [])
-      .find((t) => t.state === "failed");
-    if (!failedTest && raw.status !== "failed") {
+
+    let envelope: EvidenceEnvelope;
+    try {
+      envelope = JSON.parse(fs.readFileSync(resultFile, "utf8")) as EvidenceEnvelope;
+    } catch {
+      return {
+        ...row,
+        observed: "fail" as const,
+        matchedExpectedDefect: false,
+        rawError: "Malformed evidence JSON",
+      };
+    }
+
+    if (!envelope?.meta || !envelope.result || typeof envelope.result !== "object") {
+      return {
+        ...row,
+        observed: "fail" as const,
+        matchedExpectedDefect: false,
+        rawError: "Evidence missing meta/result envelope",
+      };
+    }
+    if (envelope.meta.scenario !== row.scenario || envelope.meta.variant !== row.variant) {
+      return {
+        ...row,
+        observed: "fail" as const,
+        matchedExpectedDefect: false,
+        rawError: "Evidence metadata mismatch for scenario/variant",
+      };
+    }
+
+    if (row.expected === "observation") {
       return {
         ...row,
         observed: "pass" as const,
-        matchedExpectedDefect: row.expected === "pass",
+        matchedExpectedDefect: true,
+        note: envelope.result,
       };
     }
-    const msg = failedTest?.displayError || "failed";
-    const failureClass = classifyFailure(msg);
+
+    if (row.expected === "pass") {
+      const verification = validateCypressRun(envelope.result, { mode: "suite" });
+      return {
+        ...row,
+        observed: verification.ok ? ("pass" as const) : ("fail" as const),
+        matchedExpectedDefect: verification.ok,
+        rawError: verification.ok ? undefined : verification.reason,
+      };
+    }
+
+    // Expected business defect
+    const failed = (envelope.result.runs || [])
+      .flatMap((r) =>
+        (r.tests || []).map((t) => ({
+          titlePath: t.title || [],
+          state: t.state,
+          displayError: t.displayError ?? null,
+        })),
+      )
+      .filter((t) => t.state === "failed");
+
+    const ids = row.expectedIds || ["BOOK-001", "BOOK-002", "C-HYBRID"];
+    const intended = failed.find((f) =>
+      isIntendedBookingStatusDefect({
+        titlePath: f.titlePath,
+        displayError: f.displayError,
+        expectedIds: ids,
+      }),
+    );
+
+    const matched =
+      Boolean(intended) &&
+      classifyFailure(intended!.displayError) === row.expected &&
+      row.expected === "BOOKING_STATUS_MISMATCH";
+
     return {
       ...row,
       observed: "fail" as const,
-      failureClass,
-      rawError: msg,
-      matchedExpectedDefect:
-        row.expected !== "pass" && matchesExpectedDefect(msg, row.expected),
+      failureClass: intended ? classifyFailure(intended.displayError) : classifyFailure(failed[0]?.displayError),
+      rawError: intended?.displayError || failed[0]?.displayError || "no failed test",
+      matchedExpectedDefect: matched,
+      preservedFailures: failed,
     };
   });
 
@@ -81,7 +147,9 @@ function main() {
   fs.writeFileSync(out, JSON.stringify({ generatedAt: new Date().toISOString(), report }, null, 2));
 
   const bad = report.filter((r) => {
-    if (r.expected === "pass") return r.observed !== "pass";
+    if (r.expected === "pass" || r.expected === "observation") {
+      return r.observed !== "pass";
+    }
     return !r.matchedExpectedDefect;
   });
 

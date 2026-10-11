@@ -49,11 +49,8 @@ export function Home({
 
   return (
     <section className="hero-panel">
-      <h1>Reserve the itinerary you meant</h1>
-      <p>
-        Search, quote, book, and reopen a persisted reservation — the same journey the critical
-        Cypress contract verifies.
-      </p>
+      <h1>Find your flight to New York</h1>
+      <p>Search one-way economy seats, review the fare, and keep your reservation when you return.</p>
 
       {!user && (
         <div className="login-row" style={{ marginBottom: 18 }}>

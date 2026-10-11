@@ -19,6 +19,7 @@ env:
   ALLOWED_DB_NAME_PATTERN: "cypress_test_trust_demo"
   PORT: "3000"
   API_PORT: "3001"
+  APP_IDENTITY: cypress-test-trust-demo@ci
 
 jobs:
   verify:

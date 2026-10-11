@@ -23,8 +23,4 @@ export const BOOKING_CONTRACT = {
   seedPassword: "Password123!",
 } as const;
 
-export const REQUIRED_TEST_IDENTITIES = ["BOOK-001", "BOOK-002"] as const;
-
-export const REQUIRED_SPEC_PATHS = [
-  "cypress/e2e/critical/booking-contract.cy.ts",
-] as const;
+/** Required test identities live in scripts/required-manifest.json (authoritative). */

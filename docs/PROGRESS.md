@@ -10,7 +10,7 @@
 
 - Path: `/Users/dand/Dev/cypress-test-trust-demo`
 - Remote: https://github.com/rajudandigam/cypress-test-trust-demo
-- Healthy main commit: `24786ab`
+- Healthy main (pre-closeout): `421d802`
 
 ## P0
 
@@ -30,6 +30,19 @@
 | P1.3 Hybrid/export | partial | B handwritten-baseline local; A/C Cloud-blocked; no fabricated export |
 | P1.4 GitHub evidence + runbook | partial | Real PR/check URLs captured; branch protection still owner UI; Cloud pending |
 
+## Closeout (post PR #1)
+
+| Item | Status |
+|------|--------|
+| Shared Cypress result validator + exact required-manifest | done |
+| Transitive critical import-graph policy | done |
+| Stored money integrity (`storedPriceSnapshot`) | done |
+| APP_IDENTITY health gate + rebuild-before-start | done |
+| Adaptive projectId / open script / docs | done |
+| Executable DEMO_RUNBOOK | done |
+| Native Cloud AI / export capture | blocked — owner Cloud secrets |
+| Branch protection requiring `ci-required` | blocked — owner GitHub UI |
+
 ### Real CI / PR links
 
 - Healthy required: https://github.com/rajudandigam/cypress-test-trust-demo/actions/runs/38104081711
@@ -37,13 +50,9 @@
 - Defect red run: https://github.com/rajudandigam/cypress-test-trust-demo/actions/runs/38104090068 (`BOOKING_STATUS_MISMATCH`)
 - Repair green run: https://github.com/rajudandigam/cypress-test-trust-demo/actions/runs/38106041405
 
-### Outstanding
+### Outstanding (owner-gated)
 
-1. Owner: require status check `ci-required` on `main` (ruleset API not accepted from CLI)
-2. Owner: Cypress Cloud projectId + `CYPRESS_RECORD_KEY` secret + AI allowance
+1. Require status check `ci-required` on `main` (GitHub UI per `docs/CI_SETUP.md`)
+2. Cypress Cloud `CYPRESS_PROJECT_ID` + `CYPRESS_RECORD_KEY` + AI allowance
 3. Capture genuine `cy.prompt` export into `demo/generated/` after Cloud login
-4. Optional: close or keep PR #1 after talk rehearsal
-
-## Deferred
-
-P2 hardening, P3 hosting/slides — not started.
+4. Optional: open a fresh defect PR after protection is on for blocked-merge evidence

@@ -2,14 +2,14 @@ import crypto from "node:crypto";
 import type { Db } from "../db/pool.js";
 import type { Clock } from "../../domain/clock.js";
 import type { QuoteView } from "../../domain/types.js";
-import { buildPrice } from "../../domain/money.js";
+import { buildPrice, storedPriceSnapshot } from "../../domain/money.js";
 import type { FlightService } from "./flight-service.js";
 import type { SessionActor } from "./session-service.js";
 
 const QUOTE_TTL_MS = 1000 * 60 * 30;
 
 function mapQuote(row: Record<string, unknown>): QuoteView {
-  const price = buildPrice(Number(row.base_cents), Number(row.taxes_fees_cents));
+  const price = storedPriceSnapshot(row);
   return {
     id: String(row.id),
     itineraryId: String(row.itinerary_id),

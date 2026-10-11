@@ -1,10 +1,21 @@
 {
-  "version": 1,
-  "requiredSpecPaths": [
-    "cypress/e2e/critical/booking-contract.cy.ts"
-  ],
-  "requiredTestIdentities": [
-    "BOOK-001",
-    "BOOK-002"
+  "version": 2,
+  "requiredCases": [
+    {
+      "id": "BOOK-001",
+      "spec": "cypress/e2e/critical/booking-contract.cy.ts",
+      "titlePath": [
+        "Critical booking contract",
+        "BOOK-001 confirms the selected itinerary for the authenticated traveler at the quoted total"
+      ]
+    },
+    {
+      "id": "BOOK-002",
+      "spec": "cypress/e2e/critical/booking-contract.cy.ts",
+      "titlePath": [
+        "Critical booking contract",
+        "BOOK-002 the reservation remains correct after direct navigation/refresh of its receipt"
+      ]
+    }
   ]
 }

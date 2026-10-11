@@ -5,6 +5,7 @@ import {
 } from "../../support/common/assertions";
 import { apiLogin } from "../../support/common/session";
 import {
+  BOOK_UA123_PLACEHOLDERS,
   BOOK_UA123_PROMPT_STEPS,
   registerBookingAliases,
 } from "../../support/adaptive/shared-actions";
@@ -17,23 +18,16 @@ describe("Hybrid adaptive booking contract", () => {
     apiLogin();
     registerBookingAliases();
 
-    // Network aliases registered before the prompt may wait on them.
     cy.prompt([...BOOK_UA123_PROMPT_STEPS], {
-      placeholders: {
-        flightNumber: BOOKING_CONTRACT.flightNumber,
-      },
+      placeholders: { ...BOOK_UA123_PLACEHOLDERS },
     });
 
-    // Explicit booking response inspection outside the prompt (do not re-wait @search).
-    cy.get("@createBooking").then((interception) => {
-      const booking = (
-        interception as unknown as { response?: { body?: { booking: BookingResource } } }
-      ).response?.body?.booking;
+    cy.wait("@createBooking").then((interception) => {
+      const booking = interception.response?.body?.booking as BookingResource;
       expect(booking?.id, "created booking id").to.be.a("string").and.not.be.empty;
 
       cy.request(`/api/bookings/${booking!.id}`).then((response) => {
         const saved = response.body.booking as BookingResource;
-        // Short visible contract block for live coding:
         expect(
           saved.status,
           "BOOKING_STATUS_MISMATCH: persisted reservation must be confirmed after successful provider response",

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { assertCents, buildPrice, formatUsdCents } from "../../src/domain/money.js";
+import {
+  assertCents,
+  buildPrice,
+  formatUsdCents,
+  storedPriceSnapshot,
+} from "../../src/domain/money.js";
 
 describe("money", () => {
   it("builds exact totals from integer cents", () => {
@@ -18,5 +23,24 @@ describe("money", () => {
 
   it("rejects non-integers", () => {
     expect(() => assertCents(1.5, "x")).toThrow(/integer/);
+  });
+
+  it("returns stored snapshot and rejects inconsistent totals", () => {
+    expect(
+      storedPriceSnapshot({
+        base_cents: 40000,
+        taxes_fees_cents: 2800,
+        total_cents: 42800,
+        currency: "USD",
+      }).totalCents,
+    ).toBe(42800);
+    expect(() =>
+      storedPriceSnapshot({
+        base_cents: 40000,
+        taxes_fees_cents: 2800,
+        total_cents: 1,
+        currency: "USD",
+      }),
+    ).toThrow(/Inconsistent money snapshot/);
   });
 });

@@ -1,7 +1,8 @@
 {
   "project": "cypress-test-trust-demo",
-  "updatedAt": "2026-10-11T02:15:00.000Z",
-  "appCommitMain": "24786abff76b030883a00a5a8a345253c566ebc8",
+  "updatedAt": "2026-10-11T19:20:00.000Z",
+  "appCommitMain": "421d802",
+  "closeoutNote": "Validators, import-graph policy, money integrity, APP_IDENTITY gate, runbook — Cloud AI/export and branch protection still owner-gated",
   "versions": {
     "nodeLocal": "24.12.0",
     "npmLocal": "11.6.2",

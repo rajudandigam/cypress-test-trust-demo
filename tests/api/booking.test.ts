@@ -187,6 +187,36 @@ describe("booking API", () => {
     expect(attempts.every((a) => a.status === 200 || a.status === 201)).toBe(true);
   });
 
+  it("rejects inconsistent persisted money totals on read", async () => {
+    const app = await startTestApp("healthy");
+    close = app.close;
+    const { cookie } = await login(app.baseUrl);
+    const quoteRes = await authedJson(app.baseUrl, cookie, "/api/quotes", {
+      method: "POST",
+      body: JSON.stringify({
+        itineraryId: UA123,
+        fareCode: "ECONOMY_STANDARD",
+        passengerCount: 1,
+      }),
+    });
+    const bookRes = await authedJson(app.baseUrl, cookie, "/api/bookings", {
+      method: "POST",
+      headers: { "Idempotency-Key": "money-integrity" },
+      body: JSON.stringify({ quoteId: quoteRes.body.quote.id }),
+    });
+    await app.db.query(`UPDATE bookings SET total_cents = 1 WHERE id = $1`, [
+      bookRes.body.booking.id,
+    ]);
+    const getRes = await authedJson(
+      app.baseUrl,
+      cookie,
+      `/api/bookings/${bookRes.body.booking.id}`,
+    );
+    expect(getRes.status).toBe(500);
+    expect(getRes.body.code).toBe("MONEY_INTEGRITY");
+    expect(getRes.body.booking?.price?.totalCents).not.toBe(42800);
+  });
+
   it("pending-finalization leaves persisted status pending after provider confirm", async () => {
     const app = await startTestApp("pending-finalization");
     close = app.close;

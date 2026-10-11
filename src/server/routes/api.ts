@@ -31,6 +31,7 @@ export function createApiRouter(deps: {
           database: true,
           migrations: false,
           scenario: config.demoMode ? config.scenario : undefined,
+          appIdentity: config.appIdentity,
         });
         return;
       }
@@ -40,6 +41,7 @@ export function createApiRouter(deps: {
         migrations: true,
         demoMode: config.demoMode,
         scenario: config.demoMode ? config.scenario : undefined,
+        appIdentity: config.appIdentity,
         now: config.clock.now().toISOString(),
         selectButton: selectButtonAttribute(config.scenario),
       });

@@ -1,86 +1,183 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyFailure,
-  matchesExpectedDefect,
-  verifyRequiredResults,
-} from "../../scripts/lib/result-verifier.js";
+  isIntendedBookingStatusDefect,
+  loadRequiredManifest,
+  validateCypressRun,
+} from "../../scripts/lib/cypress-result.js";
 
-describe("verifyRequiredResults", () => {
-  it("passes when required identities passed", () => {
-    const result = verifyRequiredResults({
-      status: "finished",
-      runs: [
-        {
-          tests: [
-            { title: ["Critical", "BOOK-001 confirms"], state: "passed" },
-            { title: ["Critical", "BOOK-002 refresh"], state: "passed" },
-          ],
-        },
-      ],
+const SPEC = "cypress/e2e/critical/booking-contract.cy.ts";
+const BOOK001 = [
+  "Critical booking contract",
+  "BOOK-001 confirms the selected itinerary for the authenticated traveler at the quoted total",
+];
+const BOOK002 = [
+  "Critical booking contract",
+  "BOOK-002 the reservation remains correct after direct navigation/refresh of its receipt",
+];
+
+function passingRequiredRun() {
+  return {
+    status: "finished",
+    totalFailed: 0,
+    totalPassed: 2,
+    totalTests: 2,
+    runs: [
+      {
+        spec: { relative: SPEC },
+        tests: [
+          { title: BOOK001, state: "passed" },
+          { title: BOOK002, state: "passed" },
+        ],
+      },
+    ],
+  };
+}
+
+describe("validateCypressRun required mode", () => {
+  const cases = loadRequiredManifest().requiredCases;
+
+  it("passes when exact spec+titlePath cases passed", () => {
+    const result = validateCypressRun(passingRequiredRun(), {
+      mode: "required",
+      requiredCases: cases,
     });
     expect(result.ok).toBe(true);
   });
 
-  it("fails when a required identity is missing", () => {
-    const result = verifyRequiredResults({
-      runs: [{ tests: [{ title: ["BOOK-001 confirms"], state: "passed" }] }],
-    });
+  it("rejects one passed BOOK-001 BOOK-002 placeholder in wrong spec", () => {
+    const result = validateCypressRun(
+      {
+        status: "finished",
+        totalFailed: 0,
+        runs: [
+          {
+            spec: { relative: "cypress/e2e/critical/wrong.cy.ts" },
+            tests: [
+              {
+                title: ["BOOK-001 BOOK-002 placeholder"],
+                state: "passed",
+              },
+            ],
+          },
+        ],
+      },
+      { mode: "required", requiredCases: cases },
+    );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("MISSING_REQUIRED");
   });
 
-  it("fails when a required identity is skipped", () => {
-    const result = verifyRequiredResults({
-      runs: [
-        {
-          tests: [
-            { title: ["BOOK-001"], state: "passed" },
-            { title: ["BOOK-002"], state: "pending" },
-          ],
-        },
-      ],
-    });
+  it("fails when both required pass but another critical test failed", () => {
+    const result = validateCypressRun(
+      {
+        status: "finished",
+        totalFailed: 1,
+        runs: [
+          {
+            spec: { relative: SPEC },
+            tests: [
+              { title: BOOK001, state: "passed" },
+              { title: BOOK002, state: "passed" },
+              { title: ["Critical booking contract", "extra case"], state: "failed" },
+            ],
+          },
+        ],
+      },
+      { mode: "required", requiredCases: cases },
+    );
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe("SKIPPED_REQUIRED");
   });
 
-  it("fails when a required identity failed", () => {
-    const result = verifyRequiredResults({
-      runs: [
+  it("fails skipped/pending/missing/malformed/empty", () => {
+    expect(validateCypressRun(null, { mode: "required", requiredCases: cases }).ok).toBe(false);
+    expect(validateCypressRun({}, { mode: "required", requiredCases: cases }).ok).toBe(false);
+    expect(
+      validateCypressRun(
+        { status: "finished", runs: [] },
+        { mode: "required", requiredCases: cases },
+      ).ok,
+    ).toBe(false);
+    expect(
+      validateCypressRun(
         {
-          tests: [
-            { title: ["BOOK-001"], state: "failed" },
-            { title: ["BOOK-002"], state: "passed" },
+          runs: [
+            {
+              spec: { relative: SPEC },
+              tests: [
+                { title: BOOK001, state: "passed" },
+                { title: BOOK002, state: "pending" },
+              ],
+            },
           ],
         },
-      ],
-    });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe("FAILED_REQUIRED");
+        { mode: "required", requiredCases: cases },
+      ).ok,
+    ).toBe(false);
   });
 
-  it("fails on malformed/no-result", () => {
-    expect(verifyRequiredResults(null).ok).toBe(false);
-    expect(verifyRequiredResults({ runs: [] }).ok).toBe(false);
+  it("fails startup-style results with failures and no runs", () => {
+    const result = validateCypressRun(
+      { failures: 1, message: "Could not find Cypress test run results" },
+      { mode: "required", requiredCases: cases },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("RUN_ERROR");
+  });
+});
+
+describe("validateCypressRun suite mode (adaptive/hybrid)", () => {
+  it("fails a completed run with totalFailed=1", () => {
+    const result = validateCypressRun(
+      {
+        status: "finished",
+        totalFailed: 1,
+        totalPassed: 0,
+        runs: [
+          {
+            spec: { relative: "cypress/e2e/adaptive/booking-shallow.cy.ts" },
+            tests: [{ title: ["A"], state: "failed", displayError: "AssertionError" }],
+          },
+        ],
+      },
+      { mode: "suite" },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("SUITE_FAILED");
+  });
+
+  it("rejects empty object as pass", () => {
+    expect(validateCypressRun({}, { mode: "suite" }).ok).toBe(false);
   });
 });
 
 describe("failure classification", () => {
-  it("detects booking status mismatch distinctly from setup failures", () => {
-    expect(classifyFailure("BOOKING_STATUS_MISMATCH: persisted reservation must be confirmed")).toBe(
-      "BOOKING_STATUS_MISMATCH",
-    );
+  it("detects booking status mismatch only for assertion failures", () => {
     expect(
-      matchesExpectedDefect(
-        "BOOKING_STATUS_MISMATCH: persisted reservation must be confirmed",
-        "BOOKING_STATUS_MISMATCH",
+      classifyFailure(
+        "AssertionError: BOOKING_STATUS_MISMATCH: persisted reservation must be confirmed: expected 'pending' to equal 'confirmed'",
       ),
-    ).toBe(true);
-    expect(classifyFailure("Timed out retrying after 4000ms: Expected to find element")).toBe(
-      "SETUP_FAILURE",
-    );
+    ).toBe("BOOKING_STATUS_MISMATCH");
     expect(
-      matchesExpectedDefect("Timed out retrying after 4000ms: Expected to find element", "BOOKING_STATUS_MISMATCH"),
+      classifyFailure(
+        "Timed out retrying after 4000ms: Expected to find element while checking BOOKING_STATUS_MISMATCH",
+      ),
+    ).toBe("SETUP_FAILURE");
+    expect(
+      isIntendedBookingStatusDefect({
+        titlePath: BOOK001,
+        displayError:
+          "AssertionError: BOOKING_STATUS_MISMATCH: expected 'pending' to equal 'confirmed'",
+        expectedIds: ["BOOK-001", "BOOK-002"],
+      }),
+    ).toBe(true);
+    expect(
+      isIntendedBookingStatusDefect({
+        titlePath: ["unrelated case"],
+        displayError:
+          "AssertionError: BOOKING_STATUS_MISMATCH: expected 'pending' to equal 'confirmed'",
+        expectedIds: ["BOOK-001", "BOOK-002"],
+      }),
     ).toBe(false);
   });
 });

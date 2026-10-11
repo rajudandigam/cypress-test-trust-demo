@@ -14,6 +14,7 @@ export type AppConfig = {
   clock: Clock;
   allowedDbNamePattern: string;
   seedPassword: string;
+  appIdentity: string;
 };
 
 function required(name: string, fallback?: string): string {
@@ -41,6 +42,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     clock: createClock(fixedNow),
     allowedDbNamePattern: env.ALLOWED_DB_NAME_PATTERN || "cypress_test_trust_demo",
     seedPassword: env.SEED_PASSWORD || "Password123!",
+    appIdentity: env.APP_IDENTITY || "cypress-test-trust-demo@local",
   };
 }
 

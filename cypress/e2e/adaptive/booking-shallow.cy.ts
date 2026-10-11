@@ -1,6 +1,6 @@
-import { BOOKING_CONTRACT } from "../../contracts/booking-contract";
 import { apiLogin } from "../../support/common/session";
 import {
+  BOOK_UA123_PLACEHOLDERS,
   BOOK_UA123_PROMPT_STEPS,
   registerBookingAliases,
 } from "../../support/adaptive/shared-actions";
@@ -14,10 +14,9 @@ describe("Adaptive shallow booking (limited scope)", () => {
     apiLogin();
     registerBookingAliases();
     cy.prompt([...BOOK_UA123_PROMPT_STEPS], {
-      placeholders: {
-        flightNumber: BOOKING_CONTRACT.flightNumber,
-      },
+      placeholders: { ...BOOK_UA123_PLACEHOLDERS },
     });
+    cy.wait("@createBooking");
     cy.get('[data-cy="receipt-heading"]').should("contain", "Reservation created");
     cy.get('[data-cy="booking-id"]').should("not.be.empty");
   });

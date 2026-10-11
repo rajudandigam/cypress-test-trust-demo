@@ -5,6 +5,18 @@
   { "variant": "D", "scenario": "healthy", "expected": "pass" },
   { "variant": "A", "scenario": "pending-finalization", "expected": "pass" },
   { "variant": "B", "scenario": "pending-finalization", "expected": "pass" },
-  { "variant": "C", "scenario": "pending-finalization", "expected": "BOOKING_STATUS_MISMATCH" },
-  { "variant": "D", "scenario": "pending-finalization", "expected": "BOOKING_STATUS_MISMATCH" }
+  {
+    "variant": "C",
+    "scenario": "pending-finalization",
+    "expected": "BOOKING_STATUS_MISMATCH",
+    "expectedIds": ["C-HYBRID", "BOOK-001"]
+  },
+  {
+    "variant": "D",
+    "scenario": "pending-finalization",
+    "expected": "BOOKING_STATUS_MISMATCH",
+    "expectedIds": ["BOOK-001", "BOOK-002"]
+  },
+  { "variant": "STYLE", "scenario": "style-change", "expected": "pass" },
+  { "variant": "LOCATOR", "scenario": "locator-change", "expected": "observation" }
 ]

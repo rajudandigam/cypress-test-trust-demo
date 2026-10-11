@@ -41,6 +41,8 @@ jobs:
       PORT: "3000"
       CYPRESS_baseUrl: http://127.0.0.1:3000
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+      CYPRESS_PROJECT_ID: ${{ vars.CYPRESS_PROJECT_ID }}
+      APP_IDENTITY: cypress-test-trust-demo@ci
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,8 +51,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - name: Require Cloud secret
+      - name: Require Cloud prerequisites
         run: |
+          if [ -z "$CYPRESS_PROJECT_ID" ]; then
+            echo "CYPRESS_PROJECT_ID repository variable missing — adaptive workflow cannot run."
+            exit 2
+          fi
           if [ -z "$CYPRESS_RECORD_KEY" ]; then
             echo "CYPRESS_RECORD_KEY missing — adaptive workflow cannot verify native cy.prompt."
             exit 2

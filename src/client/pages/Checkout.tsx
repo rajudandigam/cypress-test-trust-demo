@@ -60,7 +60,7 @@ export function Checkout() {
   return (
     <section className="panel" data-cy="checkout-page">
       <h2>Checkout</h2>
-      <p className="muted">Server-owned quote. The client submits quote identity only.</p>
+      <p className="muted">Review your itinerary and fare, then confirm the booking.</p>
       <dl className="receipt-grid">
         <div>
           <dt>Itinerary</dt>

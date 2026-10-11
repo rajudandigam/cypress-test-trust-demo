@@ -49,7 +49,7 @@ export function Receipt() {
   return (
     <section className="panel" data-cy="receipt-page">
       <h2 data-cy="receipt-heading">Reservation created</h2>
-      <p className="muted">This page loads the persisted reservation from the server on every visit.</p>
+      <p className="muted">Save this reference for your records. You can refresh this page anytime.</p>
 
       <div style={{ margin: "18px 0" }}>
         <span className={`status-pill ${statusClass}`} data-cy="booking-status">
